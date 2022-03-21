@@ -60,15 +60,11 @@ type PhotonNodeRuntime struct {
 }
 
 // LasterNumLikes
-// VoteLink为被点赞的内容ID
-// LasterAddVoteNum 为新增的点赞数量
-// LasterAddVoteNum 收集到了总的点赞数量（如果发放奖励在先先，有取消点赞的，不收回奖励
 type LasterNumLikes struct {
 	ClientID         string `json:"client_id"`
-	ClientAddress    string `json:"client_eth_address"`
-	LasterAddVoteNum int64  `json:"laster_add_vote_num"`
-	LasterVoteNum    int64  `json:"laster_vote_num"`
-	//VoteLink         []string `json:"laster_add_vote_num"`
+	LasterLikeNum    int    `json:"laster_like_num"`
+	Name             string `json:"client_name"`
+	ClientEthAddress string `json:"client_eth_address"`
 }
 
 // GetChannelWithBigInt :

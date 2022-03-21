@@ -370,8 +370,8 @@ func (rs *Service) pubChannelCheck() {
 			continue
 		}
 		for _, lcli := range lnum {
-			rewardTarget := lcli.ClientAddress
-			if lcli.LasterAddVoteNum == 0 || rewardTarget == "" {
+			rewardTarget := lcli.ClientEthAddress
+			if lcli.LasterLikeNum == 0 || rewardTarget == "" {
 				continue
 			}
 			//奖励申报-0 核-1 核-2 发放了-3   申报一次，是一条单独的记录，这样就不和后面增加的点赞奖励搅合在一起
@@ -392,7 +392,7 @@ func (rs *Service) pubChannelCheck() {
 			// 如果此条消息再次被like或者unlike，则进入新一轮的计算周期
 			rewardAddress, _ := utils.HexToAddress(rewardTarget)
 
-			lasterAddVoteNum := new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(lcli.LasterAddVoteNum*1)) //lcli.LasterAddVoteNum
+			lasterAddVoteNum := new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(int64(lcli.LasterLikeNum*1))) //lcli.LasterAddVoteNum
 			//media transfer 比例1:0.001 1like reward 0.1smt
 			//devicetype, onlinestatus := rs.Transport.NodeStatus(rewardAddress) //(common.HexToAddress(rewardTarget))
 			onlinestatus := true //pfs会自动计算mtr以及在线状态
