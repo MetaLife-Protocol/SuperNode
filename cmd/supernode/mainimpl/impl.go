@@ -268,6 +268,15 @@ func mainCtx(ctx *cli.Context) (err error) {
 		client.Close()
 		return
 	}
+	//open pub's db
+	dir, _ := filepath.Split(cfg.DataBasePath)
+	rdb, err := stormdb.OpenPubDB(filepath.Join(dir, "rewarddata"))
+	if err != nil {
+		err = fmt.Errorf("Failed to create database 'rewarddata' %s", err)
+		client.Close()
+		return
+	}
+
 	cfg.RegistryAddress, isFirstStartUp, hasConnectedChain, err = getRegistryAddress(cfg, dao, client)
 	if err != nil {
 		client.Close()
@@ -346,7 +355,7 @@ func mainCtx(ctx *cli.Context) (err error) {
 		client.Close()
 		return
 	}
-	service, err := photon.NewPhotonService(bcs, cfg.PrivateKey, transport, cfg, notifyHandler, dao)
+	service, err := photon.NewPhotonService(bcs, cfg.PrivateKey, transport, cfg, notifyHandler, dao, rdb)
 	if err != nil {
 		dao.CloseDB()
 		client.Close()
@@ -375,6 +384,7 @@ func mainCtx(ctx *cli.Context) (err error) {
 
 	return nil
 }
+
 func buildTransport(cfg *params.Config, bcs *rpc.BlockChainService) (transport network.Transporter, err error) {
 	/*
 		use ice and doesn't work as route node,means this node runs  on a mobile phone.

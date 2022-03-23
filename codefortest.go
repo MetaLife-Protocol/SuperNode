@@ -60,7 +60,7 @@ func newTestPhotonWithPolicy(feePolicy fee.Charger) *Service {
 		log.Error(err.Error())
 	}
 	config.NetworkMode = params.MixUDPXMPP
-	rd, err := NewPhotonService(bcs, bcs.PrivKey, transport, &config, notifyHandler, db)
+	rd, err := NewPhotonService(bcs, bcs.PrivKey, transport, &config, notifyHandler, db, nil)
 	if err != nil {
 		log.Error(err.Error())
 	}

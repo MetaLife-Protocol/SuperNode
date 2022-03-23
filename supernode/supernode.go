@@ -67,6 +67,14 @@ type LasterNumLikes struct {
 	ClientEthAddress string `json:"client_eth_address"`
 }
 
+// LasterNumLikes
+type LasterNumLikes1 struct {
+	ClientID         string `json:"client_id"`
+	LasterLikeNum    int    `json:"laster_like_num"`
+	Name             string `json:"client_name"`
+	ClientEthAddress string `json:"client_eth_address"`
+}
+
 // GetChannelWithBigInt :
 func (node *SuperNode) GetChannelWithBigInt(partnerNode *SuperNode, tokenAddr string) *ChannelBigInt {
 	req := &Req{
@@ -171,7 +179,7 @@ func (node *SuperNode) SpecifiedChannel(channelIdentifier string) (c channeltype
 }
 
 //通过本节点查询其他节点的ssb账号、待付款
-func (node *SuperNode) LatestNumberOfLikes() (lnum []*LasterNumLikes, err error) {
+func (node *SuperNode) LatestNumberOfLikes() (lnum map[string]LasterNumLikes, err error) {
 	req := &Req{
 		FullURL: fmt.Sprintf("http://" + node.PubApiHost + "/ssb/api/likes"),
 		Method:  http.MethodGet,
@@ -182,10 +190,13 @@ func (node *SuperNode) LatestNumberOfLikes() (lnum []*LasterNumLikes, err error)
 		log.Error(fmt.Sprintf("[SuperNode]getLatestNumberOfLikes err :%s", err))
 		return
 	}
-	err = json.Unmarshal(body, &lnum)
+	var resp = make(map[string]LasterNumLikes)
+	err = json.Unmarshal(body, &resp)
 	if err != nil {
 		return
 	}
+	lnum = resp
+	log.Info(fmt.Sprintf("LatestNumberOfLikes get likes from %s \n,All ssb client likes info is :%s", node.PubApiHost, MarshalIndent(lnum)))
 	return
 }
 

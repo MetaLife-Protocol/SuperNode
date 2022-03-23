@@ -24,6 +24,7 @@ import (
 	"github.com/MetaLife-Protocol/SuperNode/internal/rpanic"
 	"github.com/MetaLife-Protocol/SuperNode/log"
 	"github.com/MetaLife-Protocol/SuperNode/models"
+	"github.com/MetaLife-Protocol/SuperNode/models/stormdb"
 	"github.com/MetaLife-Protocol/SuperNode/network"
 	"github.com/MetaLife-Protocol/SuperNode/network/graph"
 	"github.com/MetaLife-Protocol/SuperNode/network/netshare"
@@ -76,6 +77,9 @@ type ReceivedMediatedTrasnferListener func(msg *encoding.MediatedTransfer) (remo
 
 //SentMediatedTransferListener return true this listener should not be called next time
 type SentMediatedTransferListener func(msg *encoding.MediatedTransfer) (remove bool)
+
+//RewardDB reward path: supernode--metalife PUB--ssb client
+var RewardDB *stormdb.PubRewardDB
 
 /*
 Service is a photon node
@@ -144,7 +148,7 @@ type Service struct {
 }
 
 //NewPhotonService create photon service
-func NewPhotonService(chain *rpc.BlockChainService, privateKey *ecdsa.PrivateKey, transport network.Transporter, config *params.Config, notifyHandler *notify.Handler, dao models.Dao) (rs *Service, err error) {
+func NewPhotonService(chain *rpc.BlockChainService, privateKey *ecdsa.PrivateKey, transport network.Transporter, config *params.Config, notifyHandler *notify.Handler, dao models.Dao, pubdb *stormdb.PubRewardDB) (rs *Service, err error) {
 	rs = &Service{
 		NotifyHandler:      notifyHandler,
 		Chain:              chain,
@@ -218,7 +222,13 @@ func NewPhotonService(chain *rpc.BlockChainService, privateKey *ecdsa.PrivateKey
 	} else {
 		rs.FeePolicy = &NoFeePolicy{}
 	}
+	RewardDB = pubdb
 	return rs, nil
+}
+
+//
+func InitPubDB(pdb *stormdb.PubRewardDB) {
+	RewardDB = pdb
 }
 
 // Start the node.
@@ -281,6 +291,7 @@ func (rs *Service) Start() (err error) {
 		log.Info(fmt.Sprintf("Photon Startup complete and history events process complete."))
 
 		//建立与pub的通道，并监控通道余额
+
 		go rs.pubChannelCheck()
 	}
 
@@ -318,7 +329,6 @@ func (rs *Service) pubChannelCheck() {
 	//defer rpanic.PanicRecover("pub channel check")
 	//构建超级节点客户端
 	var err error
-	//apiListen:=fmt.Sprintf("%s:%d", rs.Config.APIHost, rs.Config.APIPort)
 	apiListen := fmt.Sprintf("127.0.0.1:%d", rs.Config.APIPort)
 	superNode := &supernode.SuperNode{
 		Host:          "http://" + apiListen,
@@ -337,9 +347,8 @@ func (rs *Service) pubChannelCheck() {
 	minChannelAmount := new(big.Int).Mul(big.NewInt(ethparams.Ether), big.NewInt(params.MinBalanceofPubChannel))
 	channel00 := superNode.GetChannelWithBigInt(partnerNode, tokenAddress.String()) //第一次为nil
 	settleTime := 100
-	//第一次启动
+	//第一次创建通道（supernode--pub）
 	if channel00 == nil {
-		//第一次创建通道
 		err = superNode.OpenChannelBigInt(partnerNode.Address, tokenAddress.String(), new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(100)), settleTime) //minChannelAmount
 		if err != nil {
 			log.Error(fmt.Sprintf("[SuperNode]create channel err=%s", err))
@@ -351,18 +360,17 @@ func (rs *Service) pubChannelCheck() {
 	for {
 
 		if channel1.Balance.Cmp(minChannelAmount) == -1 {
-			//向通道存款0.001
-			xamount := new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(1)) //test deposit 0.001 smt every time
-			//rs.depositAndOpenChannelClient(tokenAddress, pubAddress, 3600, xamount, false)
+			//向通道存款0.1
+			xamount := new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(100)) //test deposit 0.1 smt every time
 			err = superNode.Deposit(partnerNode.Address, tokenAddress.String(), xamount)
 			if err != nil {
-				log.Error(fmt.Sprintf("[SuperNode]deposit 0.001 smt to channel err=%s", err))
+				log.Error(fmt.Sprintf("[SuperNode]deposit 0.1 smt to channel err=%s", err))
 			}
-			log.Info(fmt.Sprintf("[SuperNode]deposit 0.001 smt to channel between (supernode)%s and (ssbpub)%s ,SuperNode Balance= %s ",
+			log.Info(fmt.Sprintf("[SuperNode]deposit 0.1 smt to channel between (supernode)%s and (ssbpub)%s ,SuperNode Balance= %s ",
 				superNode.Address, partnerNode.Address, channel1.Balance.String()))
 			time.Sleep(5 * time.Second)
 		}
-		time.Sleep(300 * time.Second)
+		time.Sleep(3 * time.Second) //300
 		//接通pub，扫描且处理接入pub的需要发放奖励的事件
 		lnum, err := superNode.LatestNumberOfLikes()
 		if err != nil {
@@ -374,7 +382,23 @@ func (rs *Service) pubChannelCheck() {
 			if lcli.LasterLikeNum == 0 || rewardTarget == "" {
 				continue
 			}
-			//奖励申报-0 核-1 核-2 发放了-3   申报一次，是一条单独的记录，这样就不和后面增加的点赞奖励搅合在一起
+			//get 历史中对该账号已经发放的数量
+			rewardinfo, err := RewardDB.SelectHistoryReward(lcli.ClientID, lcli.ClientEthAddress)
+			if err != nil {
+				log.Error(fmt.Sprintf("[SuperNode]SelectHistoryReward err=%s", err))
+				continue
+			}
+			likenumber := 0
+			if rewardinfo == nil {
+				likenumber = lcli.LasterLikeNum
+			} else {
+				likenumber = lcli.LasterLikeNum - rewardinfo.HistoryRewardSum
+			}
+			if likenumber == 0 {
+				continue
+			}
+
+			/*//奖励申报-0 核-1 核-2 发放了-3   申报一次，是一条单独的记录，这样就不和后面增加的点赞奖励搅合在一起
 			if ReviewTime(rewardTarget) == 0 {
 				//提交奖励申报
 				err = ApplyReward(rewardTarget) //同时记录申报时间，12个小时后计算，否则err
@@ -387,13 +411,13 @@ func (rs *Service) pubChannelCheck() {
 			if ReviewTime(rewardTarget) == 1 {
 				go FixRewardSatus(2) //12个小时后再次计算
 				continue
-			}
-			//以下为复核-2次后，直接发放，删除其中unlike的数量，本轮奖励发放完成；
-			// 如果此条消息再次被like或者unlike，则进入新一轮的计算周期
-			rewardAddress, _ := utils.HexToAddress(rewardTarget)
+			}*/
 
-			lasterAddVoteNum := new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(int64(lcli.LasterLikeNum*1))) //lcli.LasterAddVoteNum
-			//media transfer 比例1:0.001 1like reward 0.1smt
+			//以下为复核-2次后
+			rewardAddress, _ := utils.HexToAddress(rewardTarget)
+			//本次应该对该账户发放的token奖励的数量
+			lasterAddVoteNum := new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(int64(likenumber*10))) //lcli.LasterAddVoteNum
+			//media transfer 比例1:0.01 1like reward 0.01smt
 			//devicetype, onlinestatus := rs.Transport.NodeStatus(rewardAddress) //(common.HexToAddress(rewardTarget))
 			onlinestatus := true //pfs会自动计算mtr以及在线状态
 			//log.Info(fmt.Sprintf("[SuperNode]before send reward,check TargetRewardAddress=%v,devicetype=%v,onlinestatus=%v", rewardAddress.String(), devicetype, onlinestatus))
@@ -410,12 +434,21 @@ func (rs *Service) pubChannelCheck() {
 				routeResp[0].Fee = CalculateFee(10000, lasterAddVoteNum)*/
 
 				//err = superNode.SendTransWithRouteInfo(tokenAddress.String(), lasterAddVoteNum, rewardAddress.String(), false, routeResp)
+
 				err = superNode.SendTrans(tokenAddress.String(), lasterAddVoteNum, rewardTarget, false)
 				if err != nil {
 					log.Error(fmt.Sprintf("[SuperNode]send reward from (supernode)%s to (client)%s,amount=%s,err=%s", superNode.Address, rewardAddress.String(), lasterAddVoteNum.String(), err))
 					continue
 				}
 				log.Info(fmt.Sprintf("[SuperNode]send reward for vote, client-address=%v,amount=%s", rewardAddress.String(), lasterAddVoteNum.String()))
+
+				//更新数据库
+				_, err := RewardDB.UpdateHistoryReward(lcli.ClientID, lcli.ClientEthAddress, lcli.LasterLikeNum)
+				if err != nil {
+					log.Error(fmt.Sprintf("[SuperNode] UpdateHistoryReward err=%s", err))
+					continue
+				}
+
 			}
 			time.Sleep(3 * time.Second)
 		}
@@ -425,19 +458,16 @@ func (rs *Service) pubChannelCheck() {
 
 func ReviewTime(rewardTarget string) int {
 	//查询数据库 奖励申报-0 复核了-1 发放了-2
-	//todo 跟随pub的官方更新要改
 	return 0
 }
 
 func ApplyReward(rewardTarget string) error {
 	//查询数据库 奖励申报-0 复核了-1 发放了-2
-	//todo 跟随pub的官方更新要改
 	return nil
 }
 
 func FixRewardSatus(status int) error {
 	//查询数据库 奖励申报-0 复核了-1 发放了-2
-	//todo 跟随pub的官方更新要改
 	return nil
 }
 
