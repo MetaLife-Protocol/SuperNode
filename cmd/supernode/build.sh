@@ -1,5 +1,5 @@
 #!/bin/sh
-export CGO_ENABLED=1
+export CGO_ENABLED=0
 source ../../env.sh 
 echo $GIT_COMMIT
 

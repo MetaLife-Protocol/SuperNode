@@ -346,7 +346,7 @@ func (rs *Service) pubChannelCheck() {
 	tokenAddress := common.HexToAddress("0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc")
 	minChannelAmount := new(big.Int).Mul(big.NewInt(ethparams.Ether), big.NewInt(params.MinBalanceofPubChannel))
 	channel00 := superNode.GetChannelWithBigInt(partnerNode, tokenAddress.String()) //第一次为nil
-	settleTime := 100
+	settleTime := 40000
 	//第一次创建通道（supernode--pub）
 	if channel00 == nil {
 		err = superNode.OpenChannelBigInt(partnerNode.Address, tokenAddress.String(), new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(100)), settleTime) //minChannelAmount
@@ -370,7 +370,8 @@ func (rs *Service) pubChannelCheck() {
 				superNode.Address, partnerNode.Address, channel1.Balance.String()))
 			time.Sleep(5 * time.Second)
 		}
-		time.Sleep(3 * time.Second) //300
+		log.Info(fmt.Sprintf("[SuperNode]=======Tips:We will count and verify the rewards(the metalife likes) every hour !!!"))
+		time.Sleep(3600 * time.Second)
 		//接通pub，扫描且处理接入pub的需要发放奖励的事件
 		lnum, err := superNode.LatestNumberOfLikes()
 		if err != nil {

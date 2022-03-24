@@ -85,7 +85,8 @@ func (r *Req) Invoke() ([]byte, error) {
 	var res dto.APIResponse
 	err = json.Unmarshal([]byte(buf[:n]), &res)
 	if err != nil {
-		panic(err)
+		//panic(err)
+		return nil, err
 	}
 	if res.ErrorCode != dto.SUCCESS {
 		err = errors.New(res.ErrorMsg)
