@@ -215,7 +215,7 @@ func (node *SuperNode) SendTransWithRouteInfo(tokenAddress string, amount *big.I
 		Data:      "test",
 	})
 	req := &Req{
-		FullURL: node.Host + "/api/1/transfers/" + tokenAddress + "/" + tokenAddress,
+		FullURL: node.Host + "/api/1/transfers/" + tokenAddress + "/" + targetAddress,
 		Method:  http.MethodPost,
 		Payload: string(p),
 		Timeout: time.Second * 20,

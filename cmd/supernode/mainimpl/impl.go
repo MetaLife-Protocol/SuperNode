@@ -209,10 +209,10 @@ func StartMain() (*photon.API, error) {
 			Name:  "pub-address",
 			Usage: "this super node has a channel with who running the SSB-PUB",
 		},
-		cli.StringFlag{
-			Name:  "reward-mode",
-			Value: "real-time",
-			Usage: "reward happened to real time(default value:real-time) or 10' am every day(value:10am) ",
+		cli.IntFlag{
+			Name:  "reward-period",
+			Value: 48,
+			Usage: "Period of award payment(default : 48 hour), unit:Hour ",
 		},
 		cli.StringFlag{
 			Name:  "pub-apihost",
@@ -568,14 +568,13 @@ func config(ctx *cli.Context) (config *params.Config, err error) {
 		config.PubAddress = common.HexToAddress(pubAddrStr)
 	}
 	log.Info(fmt.Sprintf("ssb pub account %s", config.PubAddress.String()))
-	if ctx.IsSet("reward-mode") {
-		if ctx.String("reward-mode") != "real-time" || ctx.String("reward-mode") != "10am" {
-			err = fmt.Errorf("arg reward-mode err , only support 'real-time' and '10am'")
-			return
+	if ctx.IsSet("reward-period") {
+		config.RewardPeriod = ctx.Int("reward-period")
+		if config.RevealTimeout <= 0 {
+			log.Warn("reward period should > 0")
 		}
-		config.RewardMode = ctx.String("reward-mode")
 	} else {
-		config.RewardMode = "real-time"
+		config.RewardPeriod = 48
 	}
 	if !ctx.IsSet("pub-apihost") {
 		err = fmt.Errorf("arg pub-apihost err , must be set")

@@ -370,8 +370,9 @@ func (rs *Service) pubChannelCheck() {
 				superNode.Address, partnerNode.Address, channel1.Balance.String()))
 			time.Sleep(5 * time.Second)
 		}
-		log.Info(fmt.Sprintf("[SuperNode]=======Tips:We will count and verify the rewards(the metalife likes) every hour !!!"))
-		time.Sleep(3600 * time.Second)
+		log.Info(fmt.Sprintf("[SuperNode]=======Tips:We will count and verify the rewards(the metalife likes) every %v hour !!!", rs.Config.RewardPeriod))
+		time.Sleep(30 * time.Second)
+
 		//接通pub，扫描且处理接入pub的需要发放奖励的事件
 		lnum, err := superNode.LatestNumberOfLikes()
 		if err != nil {
@@ -390,12 +391,14 @@ func (rs *Service) pubChannelCheck() {
 				continue
 			}
 			likenumber := 0
-			if rewardinfo == nil {
-				likenumber = lcli.LasterLikeNum
-			} else {
-				likenumber = lcli.LasterLikeNum - rewardinfo.HistoryRewardSum
-			}
+			/*			if rewardinfo.HistoryRewardSum == 0 {
+							likenumber = lcli.LasterLikeNum
+						} else {
+							likenumber = lcli.LasterLikeNum - rewardinfo.HistoryRewardSum
+						}*/
+			likenumber = lcli.LasterLikeNum - rewardinfo.HistoryRewardSum
 			if likenumber == 0 {
+				log.Warn(fmt.Sprintf("[SuperNode] Wait for next %v hour......to award", rs.Config.RewardPeriod))
 				continue
 			}
 
@@ -417,13 +420,15 @@ func (rs *Service) pubChannelCheck() {
 			//以下为复核-2次后
 			rewardAddress, _ := utils.HexToAddress(rewardTarget)
 			//本次应该对该账户发放的token奖励的数量
-			lasterAddVoteNum := new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(int64(likenumber*10))) //lcli.LasterAddVoteNum
-			//media transfer 比例1:0.01 1like reward 0.01smt
+			lasterAddVoteNum := new(big.Int).Mul(big.NewInt(ethparams.Szabo), big.NewInt(int64(likenumber*100))) //lcli.LasterAddVoteNum
+			//media transfer 比例1:0.0001 1like reward 0.0001smt
+			onlinestatus := false
+			devicetype := ""
 			//devicetype, onlinestatus := rs.Transport.NodeStatus(rewardAddress) //(common.HexToAddress(rewardTarget))
-			onlinestatus := true //pfs会自动计算mtr以及在线状态
-			//log.Info(fmt.Sprintf("[SuperNode]before send reward,check TargetRewardAddress=%v,devicetype=%v,onlinestatus=%v", rewardAddress.String(), devicetype, onlinestatus))
-			if onlinestatus {
-				/*routeResp, err := superNode.FindPath(rewardAddress.String(), tokenAddress.String(), lasterAddVoteNum)
+			//pfs会自动计算mtr以及在线状态
+			log.Info(fmt.Sprintf("[SuperNode]before send reward,check TargetRewardAddress=%v,devicetype=%v,onlinestatus=%v", rewardAddress.String(), devicetype, onlinestatus))
+			if !onlinestatus {
+				routeResp, err := superNode.FindPath(rewardAddress.String(), tokenAddress.String(), lasterAddVoteNum)
 				if err != nil {
 					log.Error(fmt.Sprintf("[SuperNode]send reward from (supernode)%s to (client)%s,FindPath err=%s", err))
 					continue
@@ -432,27 +437,25 @@ func (rs *Service) pubChannelCheck() {
 					log.Error(fmt.Sprintf("[SuperNode] len(routeResp) != 1"))
 					continue
 				}
-				routeResp[0].Fee = CalculateFee(10000, lasterAddVoteNum)*/
+				//routeResp[0].Fee = CalculateFee(10000, lasterAddVoteNum)
 
-				//err = superNode.SendTransWithRouteInfo(tokenAddress.String(), lasterAddVoteNum, rewardAddress.String(), false, routeResp)
-
-				err = superNode.SendTrans(tokenAddress.String(), lasterAddVoteNum, rewardTarget, false)
+				err = superNode.SendTransWithRouteInfo(tokenAddress.String(), lasterAddVoteNum, rewardAddress.String(), false, routeResp)
+				//err = superNode.SendTrans(tokenAddress.String(), lasterAddVoteNum, rewardTarget, false)
 				if err != nil {
 					log.Error(fmt.Sprintf("[SuperNode]send reward from (supernode)%s to (client)%s,amount=%s,err=%s", superNode.Address, rewardAddress.String(), lasterAddVoteNum.String(), err))
-					continue
+					panic(err)
 				}
-				log.Info(fmt.Sprintf("[SuperNode]send reward for vote, client-address=%v,amount=%s", rewardAddress.String(), lasterAddVoteNum.String()))
-
 				//更新数据库
-				_, err := RewardDB.UpdateHistoryReward(lcli.ClientID, lcli.ClientEthAddress, lcli.LasterLikeNum)
+				_, err = RewardDB.UpdateHistoryReward(lcli.ClientID, lcli.ClientEthAddress, lcli.LasterLikeNum)
 				if err != nil {
 					log.Error(fmt.Sprintf("[SuperNode] UpdateHistoryReward err=%s", err))
 					continue
 				}
-
+				log.Info(fmt.Sprintf("[SuperNode]send reward for vote SUCCESS, client-address=%v,amount=%s", rewardAddress.String(), lasterAddVoteNum.String()))
 			}
-			time.Sleep(3 * time.Second)
 		}
+		log.Warn(fmt.Sprintf("[SuperNode] Wait for next %v hour......to award......", rs.Config.RewardPeriod))
+		time.Sleep(time.Hour * time.Duration(rs.Config.RewardPeriod))
 
 	}
 }

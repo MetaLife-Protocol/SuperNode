@@ -72,7 +72,7 @@ type Config struct {
 	HTTPUsername              string
 	HTTPPassword              string
 	PubAddress                common.Address
-	RewardMode                string
+	RewardPeriod              int
 	PubApiHost                string
 }
 

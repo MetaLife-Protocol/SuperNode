@@ -53,7 +53,7 @@ func (pdb *PubRewardDB) UpdateHistoryReward(clientid, ethaddr string, nowsum int
 	if err != nil {
 		return 0, err
 	}
-	if hr == nil {
+	if hr.HistoryRewardSum == 0 {
 		_, err = pdb.InsertHistoryReward(clientid, ethaddr, nowsum)
 		if err != nil {
 			return 0, err
