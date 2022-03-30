@@ -324,7 +324,7 @@ func (rs *Service) Start() (err error) {
 
 //pubChannelCheck 监控与pub的通道状态，当余额不足时候，主动补充,但是必须保证链上资金充足
 func (rs *Service) pubChannelCheck() {
-	time.Sleep(20 * time.Second)
+	time.Sleep(60 * time.Second) //wait to sync the photon data on chain
 	log.Info("SSB-PUB channel check service start...")
 	//defer rpanic.PanicRecover("pub channel check")
 	//构建超级节点客户端
@@ -345,17 +345,26 @@ func (rs *Service) pubChannelCheck() {
 	}
 	tokenAddress := common.HexToAddress("0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc")
 	minChannelAmount := new(big.Int).Mul(big.NewInt(ethparams.Ether), big.NewInt(params.MinBalanceofPubChannel))
-	channel00 := superNode.GetChannelWithBigInt(partnerNode, tokenAddress.String()) //第一次为nil
+	err, channel00 := superNode.GetChannelWithBigInt(partnerNode, tokenAddress.String()) //第一次为nil
+	if err != nil {
+		log.Error(fmt.Sprintf("[SuperNode]GetChannel err1=%s", err))
+		panic(fmt.Errorf("[SuperNode]Cannot check1 the channel with pub...panic..."))
+	}
 	settleTime := 40000
 	//第一次创建通道（supernode--pub）
 	if channel00 == nil {
 		err = superNode.OpenChannelBigInt(partnerNode.Address, tokenAddress.String(), new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(100)), settleTime) //minChannelAmount
 		if err != nil {
 			log.Error(fmt.Sprintf("[SuperNode]create channel err=%s", err))
+			panic(fmt.Errorf("[SuperNode]Cannot create the channel with pub...panic..."))
 		}
 	}
-	channel1 := superNode.GetChannelWithBigInt(partnerNode, tokenAddress.String()) //
-	log.Info(fmt.Sprintf("[SuperNode]channel=%s,balance=%s,minBalance=%s", channel1.ChannelIdentifier, channel1.Balance.String(), minChannelAmount.String()))
+	err, channel1 := superNode.GetChannelWithBigInt(partnerNode, tokenAddress.String())
+	if err != nil {
+		log.Error(fmt.Sprintf("[SuperNode]GetChannel err2=%s", err))
+		panic(fmt.Errorf("[SuperNode]Cannot check2 the channel with pub...panic..."))
+	}
+	log.Info(fmt.Sprintf("[SuperNode]success to has a channel with pub, channel=%s,balance=%s,minBalance=%s", channel1.ChannelIdentifier, channel1.Balance.String(), minChannelAmount.String()))
 
 	for {
 
@@ -391,72 +400,52 @@ func (rs *Service) pubChannelCheck() {
 				continue
 			}
 			likenumber := 0
-			/*			if rewardinfo.HistoryRewardSum == 0 {
-							likenumber = lcli.LasterLikeNum
-						} else {
-							likenumber = lcli.LasterLikeNum - rewardinfo.HistoryRewardSum
-						}*/
 			likenumber = lcli.LasterLikeNum - rewardinfo.HistoryRewardSum
 			if likenumber == 0 {
-				log.Warn(fmt.Sprintf("[SuperNode] Wait for next %v hour......to award", rs.Config.RewardPeriod))
+				log.Warn(fmt.Sprintf("[SuperNode] there has no reward for %v,eth-addr=%v", lcli.ClientID, rewardTarget))
 				continue
 			}
 
-			/*//奖励申报-0 核-1 核-2 发放了-3   申报一次，是一条单独的记录，这样就不和后面增加的点赞奖励搅合在一起
-			if ReviewTime(rewardTarget) == 0 {
-				//提交奖励申报
-				err = ApplyReward(rewardTarget) //同时记录申报时间，12个小时后计算，否则err
-				if err != nil {
-					log.Error(fmt.Sprintf("[SuperNode]ApplyReward,to rewardTarget, err=%s", rewardTarget, err))
-					continue
-				}
+			rewardAddress, err := utils.HexToAddress(rewardTarget)
+			if err != nil {
+				log.Error(fmt.Sprintf("[SuperNode] HexToAddress err = %s", err))
 				continue
 			}
-			if ReviewTime(rewardTarget) == 1 {
-				go FixRewardSatus(2) //12个小时后再次计算
-				continue
-			}*/
-
-			//以下为复核-2次后
-			rewardAddress, _ := utils.HexToAddress(rewardTarget)
 			//本次应该对该账户发放的token奖励的数量
 			lasterAddVoteNum := new(big.Int).Mul(big.NewInt(ethparams.Szabo), big.NewInt(int64(likenumber*100))) //lcli.LasterAddVoteNum
 			//media transfer 比例1:0.0001 1like reward 0.0001smt
-			onlinestatus := false
-			devicetype := ""
-			//devicetype, onlinestatus := rs.Transport.NodeStatus(rewardAddress) //(common.HexToAddress(rewardTarget))
-			//pfs会自动计算mtr以及在线状态
-			log.Info(fmt.Sprintf("[SuperNode]before send reward,check TargetRewardAddress=%v,devicetype=%v,onlinestatus=%v", rewardAddress.String(), devicetype, onlinestatus))
-			if !onlinestatus {
-				routeResp, err := superNode.FindPath(rewardAddress.String(), tokenAddress.String(), lasterAddVoteNum)
-				if err != nil {
-					log.Error(fmt.Sprintf("[SuperNode]send reward from (supernode)%s to (client)%s,FindPath err=%s", err))
-					continue
-				}
-				if len(routeResp) != 1 {
-					log.Error(fmt.Sprintf("[SuperNode] len(routeResp) != 1"))
-					continue
-				}
-				//routeResp[0].Fee = CalculateFee(10000, lasterAddVoteNum)
 
-				err = superNode.SendTransWithRouteInfo(tokenAddress.String(), lasterAddVoteNum, rewardAddress.String(), false, routeResp)
-				//err = superNode.SendTrans(tokenAddress.String(), lasterAddVoteNum, rewardTarget, false)
-				if err != nil {
-					log.Error(fmt.Sprintf("[SuperNode]send reward from (supernode)%s to (client)%s,amount=%s,err=%s", superNode.Address, rewardAddress.String(), lasterAddVoteNum.String(), err))
-					panic(err)
-				}
-				//更新数据库
-				_, err = RewardDB.UpdateHistoryReward(lcli.ClientID, lcli.ClientEthAddress, lcli.LasterLikeNum)
-				if err != nil {
-					log.Error(fmt.Sprintf("[SuperNode] UpdateHistoryReward err=%s", err))
-					continue
-				}
-				log.Info(fmt.Sprintf("[SuperNode]send reward for vote SUCCESS, client-address=%v,amount=%s", rewardAddress.String(), lasterAddVoteNum.String()))
+			//pfs会自动计算mtr以及在线状态
+			log.Info(fmt.Sprintf("[SuperNode]before send reward,check TargetRewardAddress=%v,ssb client=%v", rewardAddress.String(), lcli.ClientID))
+
+			routeResp, err := superNode.FindPath(rewardAddress.String(), tokenAddress.String(), lasterAddVoteNum)
+			if err != nil {
+				log.Error(fmt.Sprintf("[SuperNode]send reward from (supernode)%s to (client)%s,FindPath err=%s", superNode.Address, rewardAddress.String(), err))
+				continue
 			}
+			if len(routeResp) != 1 {
+				log.Error(fmt.Sprintf("[SuperNode] len(routeResp) != 1"))
+				continue
+			}
+			//routeResp[0].Fee = CalculateFee(10000, lasterAddVoteNum)
+
+			err = superNode.SendTransWithRouteInfo(tokenAddress.String(), lasterAddVoteNum, rewardAddress.String(), false, routeResp)
+			//err = superNode.SendTrans(tokenAddress.String(), lasterAddVoteNum, rewardTarget, false)
+			if err != nil {
+				log.Error(fmt.Sprintf("[SuperNode]send reward from (supernode)%s to (client)%s,amount=%s,err=%s", superNode.Address, rewardAddress.String(), lasterAddVoteNum.String(), err))
+				continue
+			}
+			//更新数据库
+			_, err = RewardDB.UpdateHistoryReward(lcli.ClientID, lcli.ClientEthAddress, lcli.LasterLikeNum)
+			if err != nil {
+				log.Error(fmt.Sprintf("[SuperNode] UpdateHistoryReward err=%s", err))
+				continue
+			}
+			log.Info(fmt.Sprintf("[SuperNode]send reward for vote SUCCESS, client-address=%v,amount=%s", rewardAddress.String(), lasterAddVoteNum.String()))
+			time.Sleep(time.Second * 2)
 		}
 		log.Warn(fmt.Sprintf("[SuperNode] Wait for next %v hour......to award......", rs.Config.RewardPeriod))
 		time.Sleep(time.Hour * time.Duration(rs.Config.RewardPeriod))
-
 	}
 }
 

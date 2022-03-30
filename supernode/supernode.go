@@ -76,7 +76,7 @@ type LasterNumLikes1 struct {
 }
 
 // GetChannelWithBigInt :
-func (node *SuperNode) GetChannelWithBigInt(partnerNode *SuperNode, tokenAddr string) *ChannelBigInt {
+func (node *SuperNode) GetChannelWithBigInt(partnerNode *SuperNode, tokenAddr string) (error, *ChannelBigInt) {
 	req := &Req{
 		FullURL: node.Host + "/api/1/channels",
 		Method:  http.MethodGet,
@@ -85,24 +85,30 @@ func (node *SuperNode) GetChannelWithBigInt(partnerNode *SuperNode, tokenAddr st
 	}
 	body, err := req.Invoke()
 	if err != nil {
-		panic(err)
+		//panic(err)
+		//log.Error(fmt.Sprintf("GetChannelWithBigInt err :%s,body=%s", err, string(body)))
+		return err, nil
 	}
 	var nodeChannels []ChannelBigInt
 	err = json.Unmarshal(body, &nodeChannels)
 	if err != nil {
-		panic(err)
+		//panic(err)
+		//log.Error(fmt.Sprintf("GetChannelWithBigInt err :%s,body=%s", err, string(body)))
+		return err, nil
 	}
 	if len(nodeChannels) == 0 {
-		return nil
+		return nil, nil
 	}
-	for _, channel := range nodeChannels {
-		if channel.PartnerAddress == partnerNode.Address && channel.TokenAddress == tokenAddr {
-			channel.SelfAddress = node.Address
-			channel.Name = "CH-" + node.Name + "-" + partnerNode.Name
-			return &channel
+	var channelX ChannelBigInt
+	for _, channelX = range nodeChannels {
+		if channelX.PartnerAddress == partnerNode.Address && channelX.TokenAddress == tokenAddr {
+			channelX.SelfAddress = node.Address
+			channelX.Name = "CH-" + node.Name + "-" + partnerNode.Name
+			//return nil, channelX
+			break
 		}
 	}
-	return nil
+	return nil, &channelX
 }
 
 // OpenChannel :
@@ -136,7 +142,9 @@ func (node *SuperNode) OpenChannelBigInt(partnerAddress, tokenAddress string, ba
 	ch := channeltype.ChannelDataDetail{}
 	err = json.Unmarshal(body, &ch)
 	if err != nil {
-		panic(err)
+		//panic(err)
+		log.Error(fmt.Sprintf("[SuperNode]Unmarshal %s err :   body=%s err=%s", req.FullURL, string(body), err.Error()))
+		return err
 	}
 	var ws int
 	if len(waitSeconds) > 0 {
@@ -222,7 +230,7 @@ func (node *SuperNode) SendTransWithRouteInfo(tokenAddress string, amount *big.I
 	}
 	body, err := req.Invoke()
 	if err != nil {
-		log.Info(fmt.Sprintf("SendTransWithRouteInfo err :%s,body=%s", err, string(body)))
+		log.Error(fmt.Sprintf("SendTransWithRouteInfo err :%s,body=%s", err, string(body)))
 	}
 	return
 }
@@ -306,7 +314,8 @@ func (node *SuperNode) Deposit(partnerAddress, tokenAddress string, balance *big
 	ch := channeltype.ChannelDataDetail{}
 	err = json.Unmarshal(body, &ch)
 	if err != nil {
-		panic(err)
+		//panic(err)
+		return err
 	}
 	var ws int
 	if len(waitSeconds) > 0 {
