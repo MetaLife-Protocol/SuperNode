@@ -211,8 +211,8 @@ func StartMain() (*photon.API, error) {
 		},
 		cli.IntFlag{
 			Name:  "reward-period",
-			Value: 48,
-			Usage: "Period of award payment(default : 48 hour), unit:Hour ",
+			Value: 10,
+			Usage: "Period of award payment(default : 10 minutes), unit:minute",
 		},
 		cli.StringFlag{
 			Name:  "pub-apihost",
@@ -574,7 +574,7 @@ func config(ctx *cli.Context) (config *params.Config, err error) {
 			log.Warn("reward period should > 0")
 		}
 	} else {
-		config.RewardPeriod = 48
+		config.RewardPeriod = 10
 	}
 	if !ctx.IsSet("pub-apihost") {
 		err = fmt.Errorf("arg pub-apihost err , must be set")

@@ -445,7 +445,7 @@ func (rs *Service) pubChannelCheck() {
 			time.Sleep(time.Second * 2)
 		}
 		log.Warn(fmt.Sprintf("[SuperNode] Wait for next %v hour......to award......", rs.Config.RewardPeriod))
-		time.Sleep(time.Hour * time.Duration(rs.Config.RewardPeriod))
+		time.Sleep(time.Minute * time.Duration(rs.Config.RewardPeriod))
 	}
 }
 
