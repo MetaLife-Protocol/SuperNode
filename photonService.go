@@ -379,7 +379,7 @@ func (rs *Service) pubChannelCheck() {
 				superNode.Address, partnerNode.Address, channel1.Balance.String()))
 			time.Sleep(5 * time.Second)
 		}
-		log.Info(fmt.Sprintf("[SuperNode]=======Tips:We will count and verify the rewards(the metalife likes) every %v hour !!!", rs.Config.RewardPeriod))
+		log.Info(fmt.Sprintf("[SuperNode]=======Tips:We will count and verify the rewards(the metalife likes) every %v minutes !!!", rs.Config.RewardPeriod))
 		time.Sleep(30 * time.Second)
 
 		//接通pub，扫描且处理接入pub的需要发放奖励的事件
@@ -444,7 +444,7 @@ func (rs *Service) pubChannelCheck() {
 			log.Info(fmt.Sprintf("[SuperNode]send reward for vote SUCCESS, client-address=%v,amount=%s", rewardAddress.String(), lasterAddVoteNum.String()))
 			time.Sleep(time.Second * 2)
 		}
-		log.Warn(fmt.Sprintf("[SuperNode] Wait for next %v hour......to award......", rs.Config.RewardPeriod))
+		log.Warn(fmt.Sprintf("[SuperNode] Wait for next %v minutes......to award......", rs.Config.RewardPeriod))
 		time.Sleep(time.Minute * time.Duration(rs.Config.RewardPeriod))
 	}
 }
