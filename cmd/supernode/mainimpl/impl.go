@@ -219,8 +219,18 @@ func StartMain() (*photon.API, error) {
 			Value: "54.179.3.93:10008",
 			Usage: "ssb-pub server api-host eg : 54.179.3.93:10008",
 		},
+		cli.Int64Flag{
+			Name:  "tokens-per-like",
+			Value: 100000000000000,
+			Usage: "define the number of token corresponding to each like, unit : wei",
+		},
+		cli.IntFlag{
+			Name:  "effective-like-number-per-day",
+			Value: 500,
+			Usage: "maximum number of incentives issued per day, unit:like ,default is 500likes",
+		},
 	}
-	app.Flags = append(app.Flags, debug.Flags...) //
+	app.Flags = append(app.Flags, debug.Flags...)
 	app.Action = mainCtx
 	app.Name = "photon"
 	app.Version = Version
@@ -568,14 +578,16 @@ func config(ctx *cli.Context) (config *params.Config, err error) {
 		config.PubAddress = common.HexToAddress(pubAddrStr)
 	}
 	log.Info(fmt.Sprintf("ssb pub account %s", config.PubAddress.String()))
+
 	if ctx.IsSet("reward-period") {
 		config.RewardPeriod = ctx.Int("reward-period")
 		if config.RevealTimeout <= 0 {
-			log.Warn("reward period should > 0")
+			log.Warn("arg reward-period should > 0")
 		}
 	} else {
 		config.RewardPeriod = 10
 	}
+
 	if !ctx.IsSet("pub-apihost") {
 		err = fmt.Errorf("arg pub-apihost err , must be set")
 		return
@@ -585,8 +597,28 @@ func config(ctx *cli.Context) (config *params.Config, err error) {
 		err = fmt.Errorf("arg pub-apihost err , eg : 123.5.6.72:9512")
 		return
 	}
+
 	config.PubApiHost = ctx.String("pub-apihost")
 	log.Info(fmt.Sprintf("ssb pub api-host %s:%s", pudapiip, pubapiport))
+
+	if ctx.IsSet("tokens-per-like") {
+		config.TokensPerLike = ctx.Int64("tokens-per-like")
+		if config.TokensPerLike <= 0 {
+			log.Warn("arg tokens-per-like should > 0")
+		}
+	} else {
+		config.TokensPerLike = 100000000000000
+	}
+
+	if ctx.IsSet("effective-like-number-per-day") {
+		config.EffectiveLikesPerDay = ctx.Int("effective-like-number-per-day")
+		if config.EffectiveLikesPerDay <= 0 {
+			log.Warn("arg effective-like-number-per-day should > 0")
+		}
+	} else {
+		config.EffectiveLikesPerDay = 500
+	}
+
 	return
 }
 

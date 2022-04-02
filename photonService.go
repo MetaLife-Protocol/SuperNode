@@ -401,9 +401,14 @@ func (rs *Service) pubChannelCheck() {
 			}
 			likenumber := 0
 			likenumber = lcli.LasterLikeNum - rewardinfo.HistoryRewardSum
-			if likenumber == 0 {
+			if likenumber <= 0 {
 				log.Warn(fmt.Sprintf("[SuperNode] there has no reward for %v,eth-addr=%v", lcli.ClientID, rewardTarget))
 				continue
+			}
+			{ //超过EffectiveLikesPerDay数量的不予发放激励
+				if likenumber > 500 {
+					likenumber = 500
+				}
 			}
 
 			rewardAddress, err := utils.HexToAddress(rewardTarget)
@@ -412,8 +417,9 @@ func (rs *Service) pubChannelCheck() {
 				continue
 			}
 			//本次应该对该账户发放的token奖励的数量
-			lasterAddVoteNum := new(big.Int).Mul(big.NewInt(ethparams.Szabo), big.NewInt(int64(likenumber*100))) //lcli.LasterAddVoteNum
-			//media transfer 比例1:0.0001 1like reward 0.0001smt
+			//lasterAddVoteNum := new(big.Int).Mul(big.NewInt(ethparams.Szabo), big.NewInt(int64(likenumber*100))) //lcli.LasterAddVoteNum
+			lasterAddVoteNum := new(big.Int).Mul(big.NewInt(rs.Config.TokensPerLike), big.NewInt(int64(likenumber)))
+			//media transfer 比例1:0.0001 1like reward 0.0001smt default
 
 			//pfs会自动计算mtr以及在线状态
 			log.Info(fmt.Sprintf("[SuperNode]before send reward,check TargetRewardAddress=%v,ssb client=%v", rewardAddress.String(), lcli.ClientID))

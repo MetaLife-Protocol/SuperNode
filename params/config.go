@@ -74,6 +74,8 @@ type Config struct {
 	PubAddress                common.Address
 	RewardPeriod              int
 	PubApiHost                string
+	TokensPerLike             int64
+	EffectiveLikesPerDay      int
 }
 
 //DefaultConfig default config
