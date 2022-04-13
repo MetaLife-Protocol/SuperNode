@@ -406,8 +406,8 @@ func (rs *Service) pubChannelCheck() {
 				continue
 			}
 			{ //超过EffectiveLikesPerDay数量的不予发放激励
-				if likenumber > 500 {
-					likenumber = 500
+				if likenumber > rs.Config.EffectiveLikesPerDay {
+					likenumber = rs.Config.EffectiveLikesPerDay
 				}
 			}
 
