@@ -350,7 +350,7 @@ func (rs *Service) pubChannelCheck() {
 		log.Error(fmt.Sprintf("[SuperNode]GetChannel err1=%s", err))
 		panic(fmt.Errorf("[SuperNode]Cannot check1 the channel with pub...panic..."))
 	}
-	settleTime := 40000
+	settleTime := params.SettleTimeoutSuperNode
 	//第一次创建通道（supernode--pub）
 	if channel00 == nil {
 		err = superNode.OpenChannelBigInt(partnerNode.Address, tokenAddress.String(), new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(100)), settleTime) //minChannelAmount
@@ -417,13 +417,9 @@ func (rs *Service) pubChannelCheck() {
 				continue
 			}
 			//本次应该对该账户发放的token奖励的数量
-			//lasterAddVoteNum := new(big.Int).Mul(big.NewInt(ethparams.Szabo), big.NewInt(int64(likenumber*100))) //lcli.LasterAddVoteNum
 			lasterAddVoteNum := new(big.Int).Mul(big.NewInt(rs.Config.TokensPerLike), big.NewInt(int64(likenumber)))
-			//media transfer 比例1:0.0001 1like reward 0.0001smt default
-
-			//pfs会自动计算mtr以及在线状态
 			log.Info(fmt.Sprintf("[SuperNode]before send reward,check TargetRewardAddress=%v,ssb client=%v", rewardAddress.String(), lcli.ClientID))
-
+			//pfs
 			routeResp, err := superNode.FindPath(rewardAddress.String(), tokenAddress.String(), lasterAddVoteNum)
 			if err != nil {
 				log.Error(fmt.Sprintf("[SuperNode]send reward from (supernode)%s to (client)%s,FindPath err=%s", superNode.Address, rewardAddress.String(), err))
@@ -433,15 +429,13 @@ func (rs *Service) pubChannelCheck() {
 				log.Error(fmt.Sprintf("[SuperNode] len(routeResp) != 1"))
 				continue
 			}
-			//routeResp[0].Fee = CalculateFee(10000, lasterAddVoteNum)
 
 			err = superNode.SendTransWithRouteInfo(tokenAddress.String(), lasterAddVoteNum, rewardAddress.String(), false, routeResp)
-			//err = superNode.SendTrans(tokenAddress.String(), lasterAddVoteNum, rewardTarget, false)
 			if err != nil {
 				log.Error(fmt.Sprintf("[SuperNode]send reward from (supernode)%s to (client)%s,amount=%s,err=%s", superNode.Address, rewardAddress.String(), lasterAddVoteNum.String(), err))
 				continue
 			}
-			//更新数据库
+			//update db
 			_, err = RewardDB.UpdateHistoryReward(lcli.ClientID, lcli.ClientEthAddress, lcli.LasterLikeNum)
 			if err != nil {
 				log.Error(fmt.Sprintf("[SuperNode] UpdateHistoryReward err=%s", err))
@@ -455,22 +449,7 @@ func (rs *Service) pubChannelCheck() {
 	}
 }
 
-func ReviewTime(rewardTarget string) int {
-	//查询数据库 奖励申报-0 复核了-1 发放了-2
-	return 0
-}
-
-func ApplyReward(rewardTarget string) error {
-	//查询数据库 奖励申报-0 复核了-1 发放了-2
-	return nil
-}
-
-func FixRewardSatus(status int) error {
-	//查询数据库 奖励申报-0 复核了-1 发放了-2
-	return nil
-}
-
-/*// 1/10000
+/*
 func CalculateFee(feeSetting int64, amount *big.Int) *big.Int {
 	fee := big.NewInt(0)
 	if feeSetting > 0 {

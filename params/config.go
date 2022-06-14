@@ -134,3 +134,6 @@ func homeDir() string {
 func DefaultKeyStoreDir() string {
 	return filepath.Join(node.DefaultDataDir(), "keystore")
 }
+
+//SettleTimeoutSuperNode for supernode (unit:block)
+var SettleTimeoutSuperNode = 40000
