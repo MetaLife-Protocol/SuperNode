@@ -229,6 +229,47 @@ func StartMain() (*photon.API, error) {
 			Value: 500,
 			Usage: "maximum number of incentives issued per day, unit:like ,default is 500likes",
 		},
+
+		cli.Int64Flag{
+			Name:  "tokens-per-dailylogin",
+			Value: 1000000000000000000,
+			Usage: "define the number of token corresponding to each daily-login, unit : wei",
+		},
+		cli.IntFlag{
+			Name:  "effective-dailylogin-number-per-day",
+			Value: 100,
+			Usage: "maximum number of incentives issued per day, unit:times ,default is 500times",
+		},
+		cli.Int64Flag{
+			Name:  "tokens-per-dailypost",
+			Value: 3000000000000000000,
+			Usage: "define the number of token corresponding to each daily-post, unit : wei",
+		},
+		cli.IntFlag{
+			Name:  "effective-dailypost-number-per-day",
+			Value: 500,
+			Usage: "maximum number of incentives issued per day, unit:times ,default is 500times",
+		},
+		cli.Int64Flag{
+			Name:  "tokens-per-dailycomment",
+			Value: 2000000000000000000,
+			Usage: "define the number of token corresponding to each daily-comment, unit : wei",
+		},
+		cli.IntFlag{
+			Name:  "effective-dailycomment-number-per-day",
+			Value: 500,
+			Usage: "maximum number of incentives issued per day, unit:times ,default is 500times",
+		},
+		cli.Int64Flag{
+			Name:  "tokens-per-dailycreatednft",
+			Value: 2000000000000000000,
+			Usage: "define the number of token corresponding to each nft-created, unit : wei",
+		},
+		cli.IntFlag{
+			Name:  "effective-dailycreatednft-number-per-day",
+			Value: 500,
+			Usage: "maximum number of incentives issued per day, unit:times ,default is 500times",
+		},
 	}
 	app.Flags = append(app.Flags, debug.Flags...)
 	app.Action = mainCtx
@@ -609,7 +650,6 @@ func config(ctx *cli.Context) (config *params.Config, err error) {
 	} else {
 		config.TokensPerLike = 100000000000000
 	}
-
 	if ctx.IsSet("effective-like-number-per-day") {
 		config.EffectiveLikesPerDay = ctx.Int("effective-like-number-per-day")
 		if config.EffectiveLikesPerDay <= 0 {
@@ -617,6 +657,74 @@ func config(ctx *cli.Context) (config *params.Config, err error) {
 		}
 	} else {
 		config.EffectiveLikesPerDay = 500
+	}
+
+	if ctx.IsSet("tokens-per-dailylogin") {
+		config.TokensPerDailyLogin = ctx.Int64("tokens-per-dailylogin")
+		if config.TokensPerDailyLogin <= 0 {
+			log.Warn("arg tokens-per-dailylogin should > 0")
+		}
+	} else {
+		config.TokensPerDailyLogin = 1000000000000000000
+	}
+	if ctx.IsSet("effective-dailylogin-number-per-day") {
+		config.EffectiveDailyLoginNumberPerDay = ctx.Int("effective-dailylogin-number-per-day")
+		if config.EffectiveDailyLoginNumberPerDay <= 0 {
+			log.Warn("arg effective-dailylogin-number-per-day should > 0")
+		}
+	} else {
+		config.EffectiveDailyLoginNumberPerDay = 100
+	}
+
+	if ctx.IsSet("tokens-per-dailypost") {
+		config.TokensPerDailyPost = ctx.Int64("tokens-per-dailypost")
+		if config.TokensPerDailyPost <= 0 {
+			log.Warn("arg tokens-per-dailypost should > 0")
+		}
+	} else {
+		config.TokensPerDailyPost = 3000000000000000000
+	}
+	if ctx.IsSet("effective-dailypost-number-per-day") {
+		config.EffectiveDailyPostNumberPerDay = ctx.Int("effective-dailypost-number-per-day")
+		if config.EffectiveDailyPostNumberPerDay <= 0 {
+			log.Warn("arg effective-dailypost-number-per-day should > 0")
+		}
+	} else {
+		config.EffectiveDailyPostNumberPerDay = 500
+	}
+
+	if ctx.IsSet("tokens-per-dailycomment") {
+		config.TokensPerDailyComment = ctx.Int64("tokens-per-dailycomment")
+		if config.TokensPerDailyComment <= 0 {
+			log.Warn("arg tokens-per-dailycomment should > 0")
+		}
+	} else {
+		config.TokensPerDailyComment = 2000000000000000000
+	}
+	if ctx.IsSet("effective-dailycomment-number-per-day") {
+		config.EffectiveDailyCommentNumberPerDay = ctx.Int("effective-dailycomment-number-per-day")
+		if config.EffectiveDailyCommentNumberPerDay <= 0 {
+			log.Warn("arg effective-dailycomment-number-per-day should > 0")
+		}
+	} else {
+		config.EffectiveDailyCommentNumberPerDay = 500
+	}
+
+	if ctx.IsSet("tokens-per-dailycreatednft") {
+		config.TokensPerDailyCreatedNft = ctx.Int64("tokens-per-dailycreatednft")
+		if config.TokensPerDailyCreatedNft <= 0 {
+			log.Warn("arg tokens-per-dailycreatednft should > 0")
+		}
+	} else {
+		config.TokensPerDailyCreatedNft = 2000000000000000000
+	}
+	if ctx.IsSet("effective-dailycreatednft-number-per-day") {
+		config.EffectiveDailyCreatedNftNumberPerDay = ctx.Int("effective-dailycreatednft-number-per-day")
+		if config.EffectiveDailyCreatedNftNumberPerDay <= 0 {
+			log.Warn("effective-dailycreatednft-number-per-dayy should > 0")
+		}
+	} else {
+		config.EffectiveDailyCreatedNftNumberPerDay = 500
 	}
 
 	return

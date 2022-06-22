@@ -3,14 +3,15 @@ package supernode
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"net/http"
+	"time"
+
 	"github.com/MetaLife-Protocol/SuperNode/channel/channeltype"
 	"github.com/MetaLife-Protocol/SuperNode/log"
 	"github.com/MetaLife-Protocol/SuperNode/params"
 	"github.com/MetaLife-Protocol/SuperNode/pfsproxy"
 	"github.com/kataras/go-errors"
-	"math/big"
-	"net/http"
-	"time"
 )
 
 // PhotonNode a photon node
@@ -64,6 +65,20 @@ type LasterNumLikes struct {
 	ClientID         string `json:"client_id"`
 	LasterLikeNum    int    `json:"laster_like_num"`
 	Name             string `json:"client_name"`
+	ClientEthAddress string `json:"client_eth_address"`
+}
+
+// UserTasks
+type UserDailyTasks struct {
+	CollectFromPub   string `json:"pub_id"`
+	Author           string `json:"author"`
+	MessageKey       string `json:"message_key"`
+	MessageType      string `json:"message_type"`
+	MessageRoot      string `json:"message_root"`
+	MessageTime      int64  `json:"message_time"`
+	NfttxHash        string `json:"nft_tx_hash"`
+	NftTokenId       string `json:"nft_token_id"`
+	NftStoredUrl     string `json:"nft_store_url"`
 	ClientEthAddress string `json:"client_eth_address"`
 }
 
@@ -186,7 +201,7 @@ func (node *SuperNode) SpecifiedChannel(channelIdentifier string) (c channeltype
 
 }
 
-//通过本节点查询其他节点的ssb账号、待付款
+//get likes infos
 func (node *SuperNode) LatestNumberOfLikes() (lnum map[string]LasterNumLikes, err error) {
 	req := &Req{
 		FullURL: fmt.Sprintf("http://" + node.PubApiHost + "/ssb/api/likes"),
@@ -205,6 +220,41 @@ func (node *SuperNode) LatestNumberOfLikes() (lnum map[string]LasterNumLikes, er
 	}
 	lnum = resp
 	log.Info(fmt.Sprintf("LatestNumberOfLikes get likes from %s \n,All ssb client likes info is :%s", node.PubApiHost, MarshalIndent(lnum)))
+	return
+}
+
+//get daily task infos
+func (node *SuperNode) GetDailyTaskInfos(messageType string, startTime, endTime int64) (tasks []UserDailyTasks, err error) {
+	type ReqUserTask struct {
+		Author      string `json:"author"`
+		MessageType string `json:"message_type"`
+		StartTime   int64  `json:"start_time"`
+		EndTime     int64  `json:"end_time"`
+	}
+	p, err := json.Marshal(ReqUserTask{
+		Author:      "",
+		MessageType: messageType,
+		StartTime:   startTime,
+		EndTime:     endTime,
+	})
+	req := &Req{
+		FullURL: fmt.Sprintf("http://" + node.PubApiHost + "/ssb/api/get-user-daily-task"),
+		Method:  http.MethodGet,
+		Payload: string(p),
+		Timeout: time.Second * 20,
+	}
+	body, err := req.Invoke()
+	if err != nil {
+		log.Error(fmt.Sprintf("[SuperNode]get-user-daily-task err :%s", err))
+		return
+	}
+	var resp []UserDailyTasks
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return
+	}
+	tasks = resp
+	log.Info(fmt.Sprintf("GetDailyTaskInfos from %s \n,All ssb client daily tasks info is :%s", node.PubApiHost, MarshalIndent(tasks)))
 	return
 }
 

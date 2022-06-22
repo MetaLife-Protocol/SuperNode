@@ -74,8 +74,18 @@ type Config struct {
 	PubAddress                common.Address
 	RewardPeriod              int
 	PubApiHost                string
-	TokensPerLike             int64
-	EffectiveLikesPerDay      int
+
+	TokensPerLike        int64
+	EffectiveLikesPerDay int
+
+	TokensPerDailyLogin                  int64
+	EffectiveDailyLoginNumberPerDay      int
+	TokensPerDailyPost                   int64
+	EffectiveDailyPostNumberPerDay       int
+	TokensPerDailyComment                int64
+	EffectiveDailyCommentNumberPerDay    int
+	TokensPerDailyCreatedNft             int64
+	EffectiveDailyCreatedNftNumberPerDay int
 }
 
 //DefaultConfig default config
@@ -134,6 +144,3 @@ func homeDir() string {
 func DefaultKeyStoreDir() string {
 	return filepath.Join(node.DefaultDataDir(), "keystore")
 }
-
-//SettleTimeoutSuperNode for supernode (unit:block)
-var SettleTimeoutSuperNode = 40000

@@ -343,9 +343,9 @@ func (rs *Service) pubChannelCheck() {
 		Address:    rs.Config.PubAddress.String(),
 		DebugCrash: false,
 	}
-	tokenAddress := common.HexToAddress("0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc")
+
 	minChannelAmount := new(big.Int).Mul(big.NewInt(ethparams.Ether), big.NewInt(params.MinBalanceofPubChannel))
-	err, channel00 := superNode.GetChannelWithBigInt(partnerNode, tokenAddress.String()) //第一次为nil
+	err, channel00 := superNode.GetChannelWithBigInt(partnerNode, params.TokenAddress.String()) //第一次为nil
 	if err != nil {
 		log.Error(fmt.Sprintf("[SuperNode]GetChannel err1=%s", err))
 		panic(fmt.Errorf("[SuperNode]Cannot check1 the channel with pub...panic..."))
@@ -353,13 +353,13 @@ func (rs *Service) pubChannelCheck() {
 	settleTime := params.SettleTimeoutSuperNode
 	//第一次创建通道（supernode--pub）
 	if channel00 == nil {
-		err = superNode.OpenChannelBigInt(partnerNode.Address, tokenAddress.String(), new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(100)), settleTime) //minChannelAmount
+		err = superNode.OpenChannelBigInt(partnerNode.Address, params.TokenAddress.String(), new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(100)), settleTime) //minChannelAmount
 		if err != nil {
 			log.Error(fmt.Sprintf("[SuperNode]create channel err=%s", err))
 			panic(fmt.Errorf("[SuperNode]Cannot create the channel with pub...panic..."))
 		}
 	}
-	err, channel1 := superNode.GetChannelWithBigInt(partnerNode, tokenAddress.String())
+	err, channel1 := superNode.GetChannelWithBigInt(partnerNode, params.TokenAddress.String())
 	if err != nil {
 		log.Error(fmt.Sprintf("[SuperNode]GetChannel err2=%s", err))
 		panic(fmt.Errorf("[SuperNode]Cannot check2 the channel with pub...panic..."))
@@ -371,7 +371,7 @@ func (rs *Service) pubChannelCheck() {
 		if channel1.Balance.Cmp(minChannelAmount) == -1 {
 			//向通道存款0.1
 			xamount := new(big.Int).Mul(big.NewInt(ethparams.Finney), big.NewInt(100)) //test deposit 0.1 smt every time
-			err = superNode.Deposit(partnerNode.Address, tokenAddress.String(), xamount)
+			err = superNode.Deposit(partnerNode.Address, params.TokenAddress.String(), xamount)
 			if err != nil {
 				log.Error(fmt.Sprintf("[SuperNode]deposit 0.1 smt to channel err=%s", err))
 			}
@@ -382,7 +382,8 @@ func (rs *Service) pubChannelCheck() {
 		log.Info(fmt.Sprintf("[SuperNode]=======Tips:We will count and verify the rewards(the metalife likes) every %v minutes !!!", rs.Config.RewardPeriod))
 		time.Sleep(30 * time.Second)
 
-		//接通pub，扫描且处理接入pub的需要发放奖励的事件
+		//================================================================================
+		//1.接通pub，扫描且处理接入pub的需要发放奖励的事件
 		lnum, err := superNode.LatestNumberOfLikes()
 		if err != nil {
 			log.Error(fmt.Sprintf("[SuperNode]Get likes info LatestNumberOfLikes err=%s", err))
@@ -420,7 +421,7 @@ func (rs *Service) pubChannelCheck() {
 			lasterAddVoteNum := new(big.Int).Mul(big.NewInt(rs.Config.TokensPerLike), big.NewInt(int64(likenumber)))
 			log.Info(fmt.Sprintf("[SuperNode]before send reward,check TargetRewardAddress=%v,ssb client=%v", rewardAddress.String(), lcli.ClientID))
 			//pfs
-			routeResp, err := superNode.FindPath(rewardAddress.String(), tokenAddress.String(), lasterAddVoteNum)
+			routeResp, err := superNode.FindPath(rewardAddress.String(), params.TokenAddress.String(), lasterAddVoteNum)
 			if err != nil {
 				log.Error(fmt.Sprintf("[SuperNode]send reward from (supernode)%s to (client)%s,FindPath err=%s", superNode.Address, rewardAddress.String(), err))
 				continue
@@ -430,7 +431,7 @@ func (rs *Service) pubChannelCheck() {
 				continue
 			}
 
-			err = superNode.SendTransWithRouteInfo(tokenAddress.String(), lasterAddVoteNum, rewardAddress.String(), false, routeResp)
+			err = superNode.SendTransWithRouteInfo(params.TokenAddress.String(), lasterAddVoteNum, rewardAddress.String(), false, routeResp)
 			if err != nil {
 				log.Error(fmt.Sprintf("[SuperNode]send reward from (supernode)%s to (client)%s,amount=%s,err=%s", superNode.Address, rewardAddress.String(), lasterAddVoteNum.String(), err))
 				continue
@@ -444,6 +445,14 @@ func (rs *Service) pubChannelCheck() {
 			log.Info(fmt.Sprintf("[SuperNode]send reward for vote SUCCESS, client-address=%v,amount=%s", rewardAddress.String(), lasterAddVoteNum.String()))
 			time.Sleep(time.Second * 2)
 		}
+		//================================================================================
+		//2.award  for user's daily-task
+		/*tasks, err := superNode.GetDailyTaskInfos()
+		if err != nil {
+			log.Error(fmt.Sprintf("[SuperNode]Get daily task info GetDailyTaskInfos err=%s", err))
+			continue
+		}*/
+
 		log.Warn(fmt.Sprintf("[SuperNode] Wait for next %v minutes......to award......", rs.Config.RewardPeriod))
 		time.Sleep(time.Minute * time.Duration(rs.Config.RewardPeriod))
 	}

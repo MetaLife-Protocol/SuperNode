@@ -211,3 +211,9 @@ var EnableMDNS = true
 
 //MinBalanceofPubChannel 单位10^18gwei
 const MinBalanceofPubChannel = 1
+
+//SettleTimeoutSuperNode for supernode (unit:block)
+var SettleTimeoutSuperNode = 40000
+
+// tokenAddress
+var TokenAddress = common.HexToAddress("0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc")
